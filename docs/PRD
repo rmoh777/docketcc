@@ -1,0 +1,42 @@
+## 1. The Vision (The "Why")
+
+**Mission**: Transform the chaotic, time-consuming process of monitoring FCC filings into a simple, automated, and intelligent service.
+
+**Current Problem**: Professionals and advocates spend hours manually checking FCC dockets, downloading PDFs, and trying to understand what's actually important in dense regulatory documents.
+
+**Our Solution**: DocketCC lets users stop asking "What's new?" and instead get the answer: "Here's what's new *and what it means*," delivered directly to their inbox with AI-powered summaries.
+
+**Target Audience**:
+- **Primary**: Legal Professionals, Lobbyists, Public Affairs Officers, Corporate Compliance Teams
+- **Secondary**: Journalists, Academic Researchers, Advocacy Groups
+
+## 2. The User Journey (The "What")
+
+From a user's perspective, DocketCC is a simple, four-step journey:
+
+### Step 1: Sign Up
+User creates a secure account with their email address
+
+### Step 2: Subscribe  
+From a simple dashboard, user specifies which FCC docket numbers they care about (e.g., "11-42," "23-152")
+
+### Step 3: Configure
+User chooses notification frequency (Daily, Weekly, or Hourly)
+
+### Step 4: Receive
+User does nothing else. They automatically receive concise email digests summarizing new activity in their chosen dockets, complete with AI-generated summaries.
+
+## 3. Business Model (Simple & Accessible)
+
+**Free Tier**:
+- Monitor **1 docket only**
+- All notification frequencies available
+- Full AI summaries included
+- Professional email formatting
+
+**Pro Tier - $2.99/month**:
+- Monitor **unlimited dockets**
+- All features from free tier
+- **Upgrade Trigger**: Users prompted when attempting to add second docket
+
+**Strategy**: Low barrier to entry with natural conversion point that demonstrates clear value before asking for payment.

@@ -1,0 +1,19 @@
+# DocketCC Pages Configuration
+name = "docketcc"
+compatibility_date = "2024-06-24"
+compatibility_flags = ["nodejs_compat"]
+
+# Pages configuration
+pages_build_output_dir = ".svelte-kit/cloudflare"
+
+# D1 Database binding for Pages
+[[d1_databases]]
+binding = "DB"
+database_name = "docketcc-db"
+database_id = "050064e6-232b-4fbf-b29c-20be5aaf2be3"
+
+# Environment variables for ingestion worker
+# Set these with: wrangler secret put VARIABLE_NAME --name docketcc-ingestion
+# Required secrets:
+# - FCC_API_KEY
+# - GEMINI_API_KEY 

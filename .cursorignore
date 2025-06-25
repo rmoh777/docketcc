@@ -1,0 +1,8 @@
+# Temporarily allow .env to be visible to Cursor for debugging
+# .env
+
+# Keep other sensitive files hidden
+node_modules/
+.wrangler/
+.svelte-kit/
+build/ 

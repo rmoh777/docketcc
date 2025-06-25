@@ -1,0 +1,19 @@
+# DocketCC Notifications Worker Configuration
+
+name = "docketcc-notifications"
+main = "workers/notifications.js"
+compatibility_date = "2024-06-24"
+compatibility_flags = ["nodejs_compat"]
+
+[triggers]
+crons = ["0 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "docketcc-db"
+database_id = "050064e6-232b-4fbf-b29c-20be5aaf2be3"
+
+# Environment variables for notifications worker
+# Set these with: wrangler secret put VARIABLE_NAME --name docketcc-notifications
+# Required secrets:
+# - RESEND_API_KEY 

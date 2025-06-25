@@ -1,0 +1,19 @@
+# DocketCC Ingestion Worker Configuration
+name = "docketcc-ingestion"
+main = "workers/ingestion.js"
+compatibility_date = "2024-06-24"
+compatibility_flags = ["nodejs_compat"]
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "docketcc-db"
+database_id = "050064e6-232b-4fbf-b29c-20be5aaf2be3"
+
+# Environment variables for ingestion worker
+# Set these with: wrangler secret put VARIABLE_NAME --name docketcc-ingestion
+# Required secrets:
+# - FCC_API_KEY
+# - GEMINI_API_KEY 
