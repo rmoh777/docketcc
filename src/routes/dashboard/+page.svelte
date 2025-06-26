@@ -190,7 +190,7 @@
 				<h3 class="text-lg leading-6 font-medium text-gray-900">
 					Your Subscriptions ({stats.activeSubscriptions})
 					{#if data.user.subscription_tier === 'free'}
-						<span class="text-sm text-gray-500">/ {stats.maxSubscriptions} (Free Tier)</span>
+						<span class="text-sm text-gray-500">(Free Tier)</span>
 					{/if}
 				</h3>
 				{#if data.user.subscription_tier === 'free' && stats.activeSubscriptions < stats.maxSubscriptions}
