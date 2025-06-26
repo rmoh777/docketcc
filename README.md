@@ -1,6 +1,21 @@
-# DOCKETCC
+# DocketCC
 
-A SvelteKit application for document management and compliance checking, built with TypeScript, ESLint, and Prettier.
+AI-powered FCC docket tracking and monitoring system with simple email authentication.
+
+## Features
+- Simple email-based authentication (no OAuth complexity)
+- FCC docket tracking and monitoring
+- AI-powered document summaries
+- Subscription management
+
+## Quick Start
+1. Visit the deployed app
+2. Enter your email address to sign in
+3. Start tracking FCC dockets immediately
+
+---
+
+*Last updated: Force deployment with simple auth system*
 
 ## Creating a project
 
