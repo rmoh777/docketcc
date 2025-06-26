@@ -1,7 +1,8 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
 import Google from '@auth/core/providers/google';
 
-export const { handle } = SvelteKitAuth(async (event) => {
+// Custom auth handler that works without OAuth configuration
+async function createAuthHandler(event) {
 	const { platform } = event;
 	
 	// Get env vars ONLY from Cloudflare platform - no static imports that break builds
@@ -15,25 +16,21 @@ export const { handle } = SvelteKitAuth(async (event) => {
 						 clientSecret !== 'not-configured';
 
 	if (!hasValidOAuth) {
-		console.log('⚠️ OAuth not configured - app will work in dev mode only');
-		return {
-			providers: [],
-			secret: authSecret,
-			trustHost: true,
-			callbacks: {
-				async signIn() { 
-					console.log('OAuth not available - sign in blocked');
-					return false; 
-				},
-				async session({ session }) { 
-					return session; 
-				}
-			}
+		console.log('⚠️ OAuth not configured - using fallback auth handler');
+		
+		// Create a minimal auth handler that always returns null session
+		return async function(event) {
+			// Add auth methods to locals
+			event.locals.auth = async () => ({ user: null });
+			event.locals.signIn = async () => { throw new Error('OAuth not configured'); };
+			event.locals.signOut = async () => { throw new Error('OAuth not configured'); };
+			
+			return await event.resolve(event);
 		};
 	}
 
-	console.log('✅ OAuth configured - full authentication available');
-	return {
+	console.log('✅ OAuth configured - using full SvelteKitAuth');
+	return SvelteKitAuth({
 		providers: [
 			Google({
 				clientId,
@@ -62,5 +59,17 @@ export const { handle } = SvelteKitAuth(async (event) => {
 				return session;
 			}
 		}
-	};
-}); 
+	}).handle;
+}
+
+// Initialize the auth handler
+let authHandler = null;
+
+export async function handle(event) {
+	// Initialize auth handler on first request
+	if (!authHandler) {
+		authHandler = await createAuthHandler(event);
+	}
+	
+	return await authHandler(event);
+} 
