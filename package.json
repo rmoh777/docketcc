@@ -16,6 +16,7 @@
 		"format:check": "prettier --check .",
 		"test": "vitest",
 		"test:run": "vitest run",
+		"test:subscription-counter": "vitest run src/test/subscription-counter.test.js",
 		"db:create": "wrangler d1 create docketcc-db",
 		"db:migrate": "wrangler d1 migrations apply docketcc-db --local",
 		"deploy": "npm run build && wrangler pages deploy"
@@ -25,6 +26,8 @@
 		"@sveltejs/adapter-auto": "^6.0.0",
 		"@sveltejs/kit": "^2.16.0",
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
+		"@testing-library/jest-dom": "^6.6.3",
+		"@testing-library/svelte": "^5.2.8",
 		"@tsconfig/svelte": "^5.0.4",
 		"@typescript-eslint/eslint-plugin": "^8.35.0",
 		"@typescript-eslint/parser": "^8.35.0",
