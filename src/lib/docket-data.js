@@ -41,5 +41,19 @@ export const HARDCODED_DOCKETS = [
     description: 'Universal service fund for rural broadband',
     bureau: 'Wireline Competition Bureau', 
     keywords: ['rural', 'broadband', 'universal service']
+  },
+  {
+    docket_number: '23-108',
+    title: 'Affordable Connectivity Program',
+    description: 'Broadband affordability for low-income households',
+    bureau: 'Wireline Competition Bureau',
+    keywords: ['affordable', 'low income', 'broadband', 'acp']
+  },
+  {
+    docket_number: '21-402',
+    title: 'Secure and Trusted Communications Networks',
+    description: 'Supply chain security for communications networks',
+    bureau: 'Public Safety and Homeland Security Bureau',
+    keywords: ['security', 'supply chain', 'networks']
   }
-] 
+];

@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { browser } from '$app/environment'; 
 	import DocketSearch from '$lib/components/DocketSearch.svelte';
 	import DocketList from '$lib/components/DocketList.svelte';
 
@@ -8,6 +9,10 @@
 
 	let userDockets = [];
 	let showUpgradeModal = false;
+	let devMode = false;
+	let isDevelopment = false;
+	let loading = false;
+	let error = null;
 	let stats = {
 		activeSubscriptions: 0,
 		maxSubscriptions: 1,
@@ -15,6 +20,9 @@
 	};
 
 	onMount(async () => {
+		// Check if we're in development
+		isDevelopment = import.meta.env.DEV;
+		
 		await loadUserDockets();
 		
 		// Check for upgrade success message
@@ -26,31 +34,71 @@
 	});
 
 	async function loadUserDockets() {
+		loading = true;
+		error = null;
+		
 		try {
-			const response = await fetch('/api/subscriptions');
+			const url = devMode && isDevelopment ? '/api/subscriptions?dev=true' : '/api/subscriptions';
+			const response = await fetch(url);
+			const result = await response.json();
+			
 			if (response.ok) {
-				const result = await response.json();
-				userDockets = result.subscriptions;
-				
-				// Update stats
-				stats.activeSubscriptions = userDockets.length;
-				stats.maxSubscriptions = data.user.subscription_tier === 'pro' ? 999 : 1;
+				if (result.status === 'success') {
+					userDockets = result.subscriptions;
+					
+					// Update stats with actual count from API
+					stats.activeSubscriptions = result.count;
+					stats.maxSubscriptions = data.user.subscription_tier === 'pro' ? 999 : 1;
+					
+					console.log(`Found ${result.count} subscriptions`);
+				} else {
+					console.error('API returned error:', result.error);
+					userDockets = [];
+					stats.activeSubscriptions = 0;
+				}
+			} else {
+				console.error('HTTP error:', response.status);
+				userDockets = [];
+				stats.activeSubscriptions = 0;
 			}
 		} catch (error) {
 			console.error('Failed to load dockets:', error);
+			userDockets = [];
+			stats.activeSubscriptions = 0;
+		} finally {
+			loading = false;
 		}
 	}
 
 	async function handleDocketAdd(event) {
-		await loadUserDockets();
+		console.log('Docket add event received:', event.detail);
+		await loadUserDockets(); // Refresh the list after successful subscription
 	}
 
 	function handleUpgradeRequired() {
 		showUpgradeModal = true;
 	}
 
-	function handleDocketRemove() {
-		loadUserDockets();
+	async function handleDocketRemove(event) {
+		const subscriptionId = event.detail;
+		
+		try {
+			const url = devMode && isDevelopment 
+				? `/api/dockets?id=${subscriptionId}&dev=true`
+				: `/api/dockets?id=${subscriptionId}`;
+				
+			const response = await fetch(url, { method: 'DELETE' });
+			
+			if (response.ok) {
+				await loadUserDockets(); // Refresh the list
+			} else {
+				const result = await response.json();
+				alert(result.error || 'Failed to remove subscription');
+			}
+		} catch (err) {
+			console.error('Failed to remove subscription:', err);
+			alert('Failed to remove subscription');
+		}
 	}
 
 	async function handleUpgrade() {
@@ -83,6 +131,35 @@
 </script>
 
 <div class="px-4 sm:px-6 lg:px-8">
+	<!-- Development Mode Toggle -->
+	{#if isDevelopment}
+		<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
+			<div class="flex items-center">
+				<svg class="w-5 h-5 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+					<path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+				</svg>
+				<div class="flex-1">
+					<h3 class="text-sm font-medium text-yellow-800">Development Mode Available</h3>
+					<p class="text-sm text-yellow-700">Test subscription logic locally without OAuth</p>
+				</div>
+				<label class="flex items-center ml-4">
+					<input 
+						type="checkbox" 
+						bind:checked={devMode} 
+						on:change={loadUserDockets}
+						class="rounded border-yellow-300 text-yellow-600 focus:ring-yellow-500"
+					>
+					<span class="ml-2 text-sm text-yellow-800">Enable Dev Mode</span>
+				</label>
+			</div>
+			{#if devMode}
+				<div class="mt-2 text-xs text-yellow-600">
+					🚧 Using mock database - changes won't persist to production
+				</div>
+			{/if}
+		</div>
+	{/if}
+
 	<!-- Welcome Header -->
 	<div class="mb-8">
 		<h1 class="text-2xl font-bold text-gray-900">Welcome back, {data.user.name}!</h1>
@@ -179,7 +256,12 @@
 	<div class="bg-white overflow-hidden shadow rounded-lg mb-8">
 		<div class="px-4 py-5 sm:p-6">
 			<h3 class="text-lg leading-6 font-medium text-gray-900 mb-5">Add Docket Subscription</h3>
-			<DocketSearch on:docketAdd={handleDocketAdd} on:upgradeRequired={handleUpgradeRequired} />
+			<DocketSearch 
+				on:docketAdd={handleDocketAdd} 
+				on:upgradeRequired={handleUpgradeRequired}
+				{devMode}
+				{isDevelopment} 
+			/>
 		</div>
 	</div>
 
@@ -202,7 +284,12 @@
 					</button>
 				{/if}
 			</div>
-			<DocketList {userDockets} on:docketRemove={handleDocketRemove} />
+			<DocketList 
+				{userDockets} 
+				on:docketRemove={handleDocketRemove}
+				{devMode}
+				{isDevelopment} 
+			/>
 		</div>
 	</div>
 

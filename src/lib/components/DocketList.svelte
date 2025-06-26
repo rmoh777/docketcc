@@ -5,6 +5,8 @@
 	const dispatch = createEventDispatcher();
 	
 	export let userDockets = [];
+	export let devMode = false;
+	export let isDevelopment = false;
 	
 	let removingSubscription = null;
 
@@ -15,7 +17,8 @@
 
 		removingSubscription = subscription.id;
 		try {
-			const response = await fetch(`/api/dockets?id=${subscription.id}`, {
+			const devParam = devMode && isDevelopment ? '&dev=true' : '';
+			const response = await fetch(`/api/dockets?id=${subscription.id}${devParam}`, {
 				method: 'DELETE'
 			});
 
