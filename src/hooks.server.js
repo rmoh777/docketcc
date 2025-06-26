@@ -1,75 +1,46 @@
-import { SvelteKitAuth } from '@auth/sveltekit';
-import Google from '@auth/core/providers/google';
-
-// Custom auth handler that works without OAuth configuration
-async function createAuthHandler(event) {
-	const { platform } = event;
-	
-	// Get env vars ONLY from Cloudflare platform - no static imports that break builds
-	const clientId = platform?.env?.GOOGLE_CLIENT_ID || 'not-configured';
-	const clientSecret = platform?.env?.GOOGLE_CLIENT_SECRET || 'not-configured';
-	const authSecret = platform?.env?.AUTH_SECRET || 'fallback-secret-for-auth-at-least-32-characters-long';
-
-	// Check if OAuth is properly configured
-	const hasValidOAuth = clientId && clientSecret && 
-						 clientId !== 'not-configured' && 
-						 clientSecret !== 'not-configured';
-
-	if (!hasValidOAuth) {
-		console.log('⚠️ OAuth not configured - using fallback auth handler');
+// Simple email-based authentication system
+export async function handle({ event, resolve }) {
+	// Add simple auth methods to locals
+	event.locals.auth = async () => {
+		// Get user from session cookie
+		const userEmail = event.cookies.get('user_email');
+		const userName = event.cookies.get('user_name');
 		
-		// Create a minimal auth handler that always returns null session
-		return async function(event) {
-			// Add auth methods to locals
-			event.locals.auth = async () => ({ user: null });
-			event.locals.signIn = async () => { throw new Error('OAuth not configured'); };
-			event.locals.signOut = async () => { throw new Error('OAuth not configured'); };
-			
-			return await event.resolve(event);
-		};
-	}
-
-	console.log('✅ OAuth configured - using full SvelteKitAuth');
-	return SvelteKitAuth({
-		providers: [
-			Google({
-				clientId,
-				clientSecret,
-				authorization: {
-					params: {
-						scope: 'openid email profile',
-						access_type: 'offline',
-						prompt: 'select_account'
-					}
+		if (userEmail) {
+			return {
+				user: {
+					id: userEmail, // Use email as ID for simplicity
+					email: userEmail,
+					name: userName || userEmail.split('@')[0], // Use part before @ as name
+					subscription_tier: 'free'
 				}
-			})
-		],
-		secret: authSecret,
-		trustHost: true,
-		callbacks: {
-			async signIn({ user, account, profile }) {
-				console.log('User signed in:', profile.email);
-				return true;
-			},
-			async session({ session, token }) {
-				if (token?.sub) {
-					session.user.id = token.sub;
-					session.user.google_id = token.sub;
-				}
-				return session;
-			}
+			};
 		}
-	}).handle;
-}
-
-// Initialize the auth handler
-let authHandler = null;
-
-export async function handle(event) {
-	// Initialize auth handler on first request
-	if (!authHandler) {
-		authHandler = await createAuthHandler(event);
-	}
+		
+		return { user: null };
+	};
 	
-	return await authHandler(event);
+	event.locals.signIn = async (email, name) => {
+		// Set user session cookies (7 days)
+		const cookieOptions = {
+			path: '/',
+			maxAge: 60 * 60 * 24 * 7, // 7 days
+			sameSite: 'lax',
+			secure: process.env.NODE_ENV === 'production'
+		};
+		
+		event.cookies.set('user_email', email, cookieOptions);
+		event.cookies.set('user_name', name || email.split('@')[0], cookieOptions);
+		
+		return true;
+	};
+	
+	event.locals.signOut = async () => {
+		// Clear session cookies
+		event.cookies.delete('user_email', { path: '/' });
+		event.cookies.delete('user_name', { path: '/' });
+		return true;
+	};
+	
+	return await resolve(event);
 } 
