@@ -56,4 +56,4 @@ export const HARDCODED_DOCKETS = [
     bureau: 'Public Safety and Homeland Security Bureau',
     keywords: ['security', 'supply chain', 'networks']
   }
-] 
+];
