@@ -105,7 +105,7 @@
 						<dl>
 							<dt class="text-sm font-medium text-gray-500 truncate">Active Subscriptions</dt>
 							<dd class="text-lg font-medium text-gray-900">
-								{stats.activeSubscriptions} / {stats.maxSubscriptions === 999 ? '∞' : stats.maxSubscriptions}
+								{stats.activeSubscriptions}
 								{#if data.user.subscription_tier === 'free'}
 									<span class="text-sm text-gray-500">(Free)</span>
 								{/if}
