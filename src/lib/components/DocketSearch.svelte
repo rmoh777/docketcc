@@ -3,6 +3,10 @@
 	
 	const dispatch = createEventDispatcher();
 	
+	// Props from parent
+	export let devMode = false;
+	export let isDevelopment = false;
+	
 	let searchQuery = '';
 	let searchResults = [];
 	let loading = false;
@@ -43,7 +47,8 @@
 	// Subscribe to docket
 	async function subscribeToDocket() {
 		try {
-			const response = await fetch('/api/dockets', {
+			const url = devMode && isDevelopment ? '/api/dockets?dev=true' : '/api/dockets';
+			const response = await fetch(url, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ 

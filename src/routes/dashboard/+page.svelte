@@ -71,25 +71,8 @@
 	}
 
 	async function handleDocketAdd(event) {
-		loading = true;
-		error = null;
-		
-		try {
-			const url = devMode && isDevelopment ? '/api/subscriptions?dev=true' : '/api/subscriptions';
-			const response = await fetch(url);
-			const result = await response.json();
-			
-			if (response.ok) {
-				await loadUserDockets(); // Refresh the list
-			} else if (result.requiresUpgrade) {
-				showUpgradeModal = true;
-			} else {
-				alert(result.error || 'Failed to add subscription');
-			}
-		} catch (err) {
-			console.error('Failed to add docket:', err);
-			alert('Failed to add subscription');
-		}
+		console.log('Docket add event received:', event.detail);
+		await loadUserDockets(); // Refresh the list after successful subscription
 	}
 
 	function handleUpgradeRequired() {
@@ -273,7 +256,12 @@
 	<div class="bg-white overflow-hidden shadow rounded-lg mb-8">
 		<div class="px-4 py-5 sm:p-6">
 			<h3 class="text-lg leading-6 font-medium text-gray-900 mb-5">Add Docket Subscription</h3>
-			<DocketSearch on:docketAdd={handleDocketAdd} on:upgradeRequired={handleUpgradeRequired} />
+			<DocketSearch 
+				on:docketAdd={handleDocketAdd} 
+				on:upgradeRequired={handleUpgradeRequired}
+				{devMode}
+				{isDevelopment} 
+			/>
 		</div>
 	</div>
 
@@ -296,7 +284,12 @@
 					</button>
 				{/if}
 			</div>
-			<DocketList {userDockets} on:docketRemove={handleDocketRemove} />
+			<DocketList 
+				{userDockets} 
+				on:docketRemove={handleDocketRemove}
+				{devMode}
+				{isDevelopment} 
+			/>
 		</div>
 	</div>
 
