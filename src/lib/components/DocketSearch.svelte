@@ -19,7 +19,7 @@
 
 		loading = true;
 		try {
-			const response = await fetch(`/api/dockets?action=search&q=${encodeURIComponent(searchQuery.trim())}`);
+			const response = await fetch(`/api/dockets?q=${encodeURIComponent(searchQuery.trim())}`);
 			if (response.ok) {
 				const result = await response.json();
 				searchResults = result.dockets;

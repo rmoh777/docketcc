@@ -1,133 +1,120 @@
 import { json } from '@sveltejs/kit';
-import { DocketSearch } from '$lib/docket-search.js';
-import { Database } from '$lib/database.js';
+import { HARDCODED_DOCKETS } from '$lib/docket-data.js';
 
 export async function GET({ url, locals, platform }) {
-	const session = await locals.auth();
-	if (!session?.user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+	const query = url.searchParams.get('q')?.toLowerCase() || '';
+	console.log('Searching dockets for:', query);
+
+	if (!query) {
+		return json({ dockets: [], message: 'No search query provided' });
 	}
 
-	const action = url.searchParams.get('action');
-	const query = url.searchParams.get('q');
-
 	try {
-		const docketSearch = new DocketSearch(platform.env);
+		// Search hardcoded dockets by keyword or docket number
+		const results = HARDCODED_DOCKETS.filter(docket => {
+			const matchesNumber = docket.docket_number.includes(query);
+			const matchesTitle = docket.title.toLowerCase().includes(query);
+			const matchesKeywords = docket.keywords.some(keyword =>
+				keyword.toLowerCase().includes(query)
+			);
+			return matchesNumber || matchesTitle || matchesKeywords;
+		});
 
-		if (action === 'search' && query) {
-			// Simple keyword search - exact matches only
-			const results = await docketSearch.searchDockets(query);
-			return json({ dockets: results });
-		}
+		console.log(`Found ${results.length} matching dockets`);
 
-		return json({ error: 'Missing action or query parameter' }, { status: 400 });
+		return json({
+			status: 'success',
+			dockets: results.slice(0, 10), // Limit to 10 results
+			query: query
+		});
 	} catch (error) {
 		console.error('Docket search error:', error);
-		return json({ error: 'Search failed' }, { status: 500 });
+		return json({
+			status: 'error',
+			error: error.message,
+			dockets: []
+		}, { status: 500 });
 	}
 }
 
 export async function POST({ request, locals, platform }) {
-	const session = await locals.auth();
-	if (!session?.user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
-	}
+	console.log('Creating docket subscription...');
 
 	try {
 		const { docket_number, frequency = 'daily' } = await request.json();
+		const db = platform.env.DB;
 
-		if (!/^\d{2}-\d+$/.test(docket_number)) {
-			return json({ error: 'Invalid docket number format' }, { status: 400 });
+		// For now, use test user (we'll add real auth later)
+		const testUserId = 'test-user-123';
+
+		// Check if user already has this subscription
+		const existing = await db.prepare(`
+			SELECT uds.id FROM UserDocketSubscriptions uds
+			JOIN Dockets d ON uds.docket_id = d.id
+			WHERE uds.user_id = ? AND d.docket_number = ? AND uds.is_active = true
+		`).bind(testUserId, docket_number).first();
+
+		if (existing) {
+			return json({
+				status: 'error',
+				error: 'Already subscribed to this docket'
+			}, { status: 400 });
 		}
 
-		if (!['daily', 'weekly', 'hourly'].includes(frequency)) {
-			return json({ error: 'Invalid notification frequency' }, { status: 400 });
+		// Check subscription limits (free tier = 1 docket)
+		const userSubscriptions = await db.prepare(`
+			SELECT COUNT(*) as count FROM UserDocketSubscriptions 
+			WHERE user_id = ? AND is_active = true
+		`).bind(testUserId).first();
+
+		if (userSubscriptions.count >= 1) {
+			return json({
+				status: 'error',
+				error: 'Free tier limited to 1 docket',
+				requiresUpgrade: true
+			}, { status: 403 });
 		}
 
-		const db = new Database(platform.env);
-
-		// Check subscription limits for free tier
-		const user = await db.getUserById(session.user.id);
-		if (user.subscription_tier === 'free') {
-			const existingSubscriptions = await db.getUserSubscriptions(session.user.id);
-			if (existingSubscriptions.length >= 1) {
-				return json(
-					{
-						error: 'Free tier limited to 1 docket subscription',
-						requiresUpgrade: true
-					},
-					{ status: 403 }
-				);
-			}
+		// Find the docket in our hardcoded list
+		const docketInfo = HARDCODED_DOCKETS.find(d => d.docket_number === docket_number);
+		if (!docketInfo) {
+			return json({
+				status: 'error',
+				error: 'Docket not found'
+			}, { status: 404 });
 		}
 
-		// Check if user is already subscribed to this docket
-		const existingSubscription = await db.getUserDocketSubscription(session.user.id, docket_number);
-		if (existingSubscription) {
-			return json(
-				{ error: 'Already subscribed to this docket' },
-				{ status: 409 }
-			);
-		}
-
-		// Fetch and add docket info if it doesn't exist
-		const docketSearch = new DocketSearch(platform.env);
-		const docketInfo = await docketSearch.fetchDocketInfo(docket_number);
-		if (docketInfo) {
-			await docketSearch.addDocketToDatabase(docketInfo);
-		}
-
-		// Get docket ID from database
-		const docket = await db.getDocketByNumber(docket_number);
-		if (!docket) {
-			return json({ error: 'Failed to create or find docket' }, { status: 500 });
-		}
+		// Create docket in database if it doesn't exist
+		await db.prepare(`
+			INSERT OR REPLACE INTO Dockets (docket_number, title, bureau, description, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`).bind(
+			docketInfo.docket_number,
+			docketInfo.title,
+			docketInfo.bureau,
+			docketInfo.description,
+			Date.now()
+		).run();
 
 		// Create subscription
-		const subscription = await db.addDocketSubscription(session.user.id, docket.id, frequency);
+		await db.prepare(`
+			INSERT INTO UserDocketSubscriptions (user_id, docket_id, notification_frequency, is_active, created_at)
+			SELECT ?, d.id, ?, true, ?
+			FROM Dockets d WHERE d.docket_number = ?
+		`).bind(testUserId, frequency, Date.now(), docket_number).run();
 
-		return json({ 
-			success: true, 
-			subscription: {
-				id: subscription.id,
-				docket_number: docket_number,
-				docket_title: docket.title,
-				frequency: frequency,
-				created_at: subscription.created_at
-			}
+		console.log('Subscription created successfully');
+
+		return json({
+			status: 'success',
+			message: 'Subscription created',
+			docket: docketInfo
 		});
 	} catch (error) {
-		console.error('Add docket subscription error:', error);
-		return json({ error: 'Failed to add docket subscription' }, { status: 500 });
-	}
-}
-
-export async function DELETE({ url, locals, platform }) {
-	const session = await locals.auth();
-	if (!session?.user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
-	}
-
-	try {
-		const subscriptionId = url.searchParams.get('id');
-		if (!subscriptionId) {
-			return json({ error: 'Subscription ID required' }, { status: 400 });
-		}
-
-		const db = new Database(platform.env);
-
-		// Verify the subscription belongs to the current user
-		const subscription = await db.getSubscriptionById(subscriptionId);
-		if (!subscription || subscription.user_id !== session.user.id) {
-			return json({ error: 'Subscription not found' }, { status: 404 });
-		}
-
-		// Delete the subscription
-		await db.removeSubscription(subscriptionId);
-
-		return json({ success: true });
-	} catch (error) {
-		console.error('Remove subscription error:', error);
-		return json({ error: 'Failed to remove subscription' }, { status: 500 });
+		console.error('Subscription creation failed:', error);
+		return json({
+			status: 'error',
+			error: error.message
+		}, { status: 500 });
 	}
 } 
